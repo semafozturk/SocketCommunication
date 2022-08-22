@@ -55,6 +55,7 @@
             this.txtHost.Name = "txtHost";
             this.txtHost.Size = new System.Drawing.Size(100, 23);
             this.txtHost.TabIndex = 1;
+            this.txtHost.Text = "127.0.0.1";
             // 
             // label2
             // 
@@ -71,6 +72,7 @@
             this.txtPort.Name = "txtPort";
             this.txtPort.Size = new System.Drawing.Size(100, 23);
             this.txtPort.TabIndex = 3;
+            this.txtPort.Text = "9000";
             // 
             // btnStart
             // 

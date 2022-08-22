@@ -1,4 +1,5 @@
-﻿using SocketCommunication.Client;
+﻿using log4net;
+using SocketCommunication.Client;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -17,22 +18,29 @@ namespace SocketCommunication
 {
     public partial class ClientSide : Form
     {
+        private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
         public static Socket clientSocket;
         private byte[] buffer;
         private static string username;
         public ClientSide()
         {
+            log4net.Config.XmlConfigurator.Configure();
             InitializeComponent();
         }
+        #region Server socketinden Client Socketinin bilgilerine ulaşabilmek için kullanılan method
+        #endregion
         public Socket sendSocket()
         {
             return clientSocket;
         }
-        public string GetUserName()
-        {
-            ClientSide clientF = this;
-            return clientF.txtUsername.Text;
-        }
+        #region Server socketinden Client Socketi ile bağlanan userın usernameine ulaşabilmek için kullanılan method
+        #endregion
+        //public string GetUserName()
+        //{
+        //    ClientSide clientF = this;
+        //    return clientF.txtUsername.Text;
+        //}
         public Form GetClientForm()
         {
             //username = txtUsername.Text;
@@ -42,7 +50,7 @@ namespace SocketCommunication
         private void AppendToTextBox(string txt)
         {
             Invoke((Action)delegate {
-                txtContent.Text += Environment.NewLine +"Server: " +txt;
+                txtContent.Text += Environment.NewLine +VariableConfig.serverString +txt;
                 //connnect butonu, server-->dan clienta
             });
         }
@@ -74,11 +82,12 @@ namespace SocketCommunication
 
             catch (SocketException ex)
             {
-                txtMessage.Text += "SOCKETEX HATASI";
+                log.Error(VariableConfig.clienttoSocketConnectError);
+                txtMessage.Text += VariableConfig.socketexError;
             }
             catch (ObjectDisposedException ex)
             {
-                txtMessage.Text += "ObjectDisposedException HATASI";
+                txtMessage.Text += VariableConfig.objectDisposedExError;
             }
         }
         private void ConnectCallback(IAsyncResult AR)
@@ -91,11 +100,12 @@ namespace SocketCommunication
             }
             catch (SocketException ex)
             {
-                txtMessage.Text += "ConnectCallback SocketException Hatası";
+                log.Error(VariableConfig.connectCallbackError1+ username + VariableConfig.connectCallbackError2);
+                txtMessage.Text += VariableConfig.socketexError;
             }
             catch (ObjectDisposedException ex)
             {
-                txtMessage.Text += "ConnectCallback ObjectDisposedException Hatası";
+                txtMessage.Text += VariableConfig.objectDisposedExError;
             }
         }
 
@@ -106,14 +116,15 @@ namespace SocketCommunication
             {
                 username = txtUsername.Text;
                var asd= clientSocket.EndSend(AR);
+                log.Info(username+VariableConfig.sendCallbackError);
             }
             catch (SocketException ex)
             {
-                txtMessage.Text += "SendCallback SocketException Hatası";
+                txtMessage.Text += VariableConfig.socketexError;
             }
             catch (ObjectDisposedException ex)
             {
-                txtMessage.Text += "SendCallback ObjectDisposedException Hatası";
+                txtMessage.Text += VariableConfig.objectDisposedExError;
             }
         }
 
@@ -123,16 +134,17 @@ namespace SocketCommunication
             {
                 clientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
-                var endPoint = new IPEndPoint(IPAddress.Parse(txtHost.Text), 9000);
+                var endPoint = new IPEndPoint(IPAddress.Parse(txtHost.Text), int.Parse(txtPort.Text));
                 clientSocket.BeginConnect(endPoint, ConnectCallback, null);
+                log.Info($"{username}{VariableConfig.requestConnectServerError1}{txtHost.Text}:{txtPort.Text}{VariableConfig.requestConnectServerError2}");
             }
             catch (SocketException ex)
             {
-                txtMessage.Text += "btnStart_Click SocketException Hatası";
+                txtMessage.Text += VariableConfig.socketexError;
             }
             catch (ObjectDisposedException ex)
             {
-                txtMessage.Text += "btnStart_Click ObjectDisposedException Hatası";
+                txtMessage.Text += VariableConfig.objectDisposedExError;
             }
         }
 
@@ -142,16 +154,18 @@ namespace SocketCommunication
             {
                 username = txtUsername.Text;
                 byte[] buffer = Encoding.ASCII.GetBytes(username+">"+txtMessage.Text);
+                log.Info(username+ VariableConfig.requestSendMessageError1 + txtMessage.Text + VariableConfig.requestSendMessageError2);
                 clientSocket.BeginSend(buffer, 0, buffer.Length, SocketFlags.None, SendCallback, null);
+                
                 txtMessage.Text = String.Empty;
             }
             catch (SocketException ex)
             {
-                txtMessage.Text += "btnSend_Click SocketException Hatası";
+                txtMessage.Text += VariableConfig.socketexError;
             }
             catch (ObjectDisposedException ex)
             {
-                txtMessage.Text += "btnSend_Click ObjectDisposedException Hatası";
+                txtMessage.Text += VariableConfig.objectDisposedExError;
             }
 
         }
@@ -173,12 +187,12 @@ namespace SocketCommunication
 
         private void txtUsername_Enter(object sender, EventArgs e)
         {
-            if (txtUsername.Text == "username") txtUsername.Text = String.Empty;
+            if (txtUsername.Text == VariableConfig.usernameString) txtUsername.Text = String.Empty;
         }
 
         private void txtUsername_Leave(object sender, EventArgs e)
         {
-            if (txtUsername.Text == String.Empty) txtUsername.Text = "username";
+            if (txtUsername.Text == String.Empty) txtUsername.Text = VariableConfig.usernameString;
         }
     }
 }

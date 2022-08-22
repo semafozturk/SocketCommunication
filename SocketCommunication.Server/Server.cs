@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using log4net;
+using Newtonsoft.Json;
 using SocketCommunication.Client;
 using System;
 using System.Collections.Generic;
@@ -25,6 +26,8 @@ namespace SocketCommunication.Server
         string _username;
         private static string tc;
         private static string jsonText;
+        private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
         public string SendTc()
         {
             return tc;
@@ -37,6 +40,7 @@ namespace SocketCommunication.Server
         
         public ServerSide()
         {
+            log4net.Config.XmlConfigurator.Configure();
             InitializeComponent();
         }
         //protected Socket AcceptMethod(Socket listeningSocket)
@@ -73,7 +77,6 @@ namespace SocketCommunication.Server
             try
             {
                 int received = clientSocket.EndReceive(AR);
-                
                 //_username = clientForm.GetUserName();
                 Array.Resize(ref buffer,received);
                 string text=Encoding.ASCII.GetString(buffer);
@@ -83,6 +86,7 @@ namespace SocketCommunication.Server
                 User result = JsonConvert.DeserializeObject<User>(jsonText);
                 tc = result.UserId;
                 AppendToTextBox(text);
+                log.Info($"{_username} Client'ı tarafından gönderilen mesaj Server'a ulaştı.");
                 btnClick_Click(null, null);
                 //btnClick.Click += new EventHandler(btnClick_Click);
 
@@ -92,6 +96,7 @@ namespace SocketCommunication.Server
             }
             catch (SocketException ex)
             {
+                log.Error($"{_username} Client'ının mesaj gönderim isteği bağlantı kesildiği için Server'a iletilemedi.");
                 txtMessage.Text += "SOCKETEX HATASI";
             }
             catch (ObjectDisposedException ex)
@@ -170,6 +175,7 @@ namespace SocketCommunication.Server
             }
             catch (SocketException ex)
             {
+                log.Error("Socket tarafından mesaj gönderimi başarısız oldu.");
                 txtMessage.Text += "btnSend_Click SocketException Hatası";
             }
             catch (ObjectDisposedException ex)

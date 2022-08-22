@@ -16,7 +16,7 @@ namespace SocketCommunication.Server
     public partial class GetInfo : Form
     {
         public static string jsonText;
-        //public string tc;
+        public string tc;
         private ServerSide serverForm = null;
 
         public GetInfo(Form callingForm)
@@ -35,10 +35,10 @@ namespace SocketCommunication.Server
         public DataTable FillGrid(User user)
         {
             DataTable dt = new DataTable();
-            dt.Columns.Add("TC NO");
-            dt.Columns.Add("User Name");
-            dt.Columns.Add("User Surname");
-            dt.Columns.Add("User Info");
+            dt.Columns.Add(VariableConfig.tc);
+            dt.Columns.Add(VariableConfig.userName);
+            dt.Columns.Add(VariableConfig.userSurname);
+            dt.Columns.Add(VariableConfig.userInfo);
             DataRow dr = dt.NewRow();
             dr[0] = user.UserId;
             dr[1] = user.UserName;
@@ -53,21 +53,32 @@ namespace SocketCommunication.Server
             InitializeComponent();
         }
 
-        private async void btnGetir_Click(object sender, EventArgs e)
+
+        private void btnGonder_Click(object sender, EventArgs e)
         {
+
+        }
+
+        private async void GetInfo_Load(object sender, EventArgs e)
+        {
+            serverForm = new ServerSide();
+            tc=serverForm.SendJsonText();
+            User user = JsonConvert.DeserializeObject<User>(tc);
+            tc = user.UserId;
+            //string json = serverForm.SendJsonText();
+            //User result = JsonConvert.DeserializeObject<User>(json);
+            //var dt = FillGrid(result);
+            //dataGridView1.DataSource = dt;
             var client = new HttpClient();
             client.BaseAddress = new Uri(VariableConfig.BaseUrl);
             HttpResponseMessage response = new HttpResponseMessage();
             try
             {
-                string api = VariableConfig.endpointUrl + "11";
+                string api = VariableConfig.endpointUrl + tc;
                 response = await client.GetAsync(api);
                 if (response.IsSuccessStatusCode)
                 {
                     jsonText = await response.Content.ReadAsStringAsync();
-                    string[] jsonSplitted = jsonText.Split('>');
-                    int usernameLen = jsonSplitted[0].Length;
-                    jsonText = jsonText.Remove(0, usernameLen+1);
                     var dataSource = response.Content.ReadAsStringAsync().Result;
 
                     User result = JsonConvert.DeserializeObject<User>(jsonText);
@@ -79,19 +90,6 @@ namespace SocketCommunication.Server
             {
                 MessageBox.Show(ex.Message);
             }
-        }
-
-        private void btnGonder_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void GetInfo_Load(object sender, EventArgs e)
-        {
-            string json = serverForm.SendJsonText();
-            User result = JsonConvert.DeserializeObject<User>(json);
-            var dt = FillGrid(result);
-            dataGridView1.DataSource = dt;
         }
     }
 }
