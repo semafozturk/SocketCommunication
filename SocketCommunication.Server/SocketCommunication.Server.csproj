@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Salaros.ConfigParser" Version="0.3.8" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="6.0.0" />
     <PackageReference Include="System.Net.Sockets" Version="4.3.0" />
   </ItemGroup>

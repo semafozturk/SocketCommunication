@@ -5,10 +5,13 @@ using SocketCommunication.Api.Infrastructure.Implementations;
 using System.Reflection;
 using Microsoft.Extensions.Logging.Log4Net.AspNetCore;
 using log4net.Config;
+using Salaros.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 XmlConfigurator.Configure(new FileInfo("log4net.config"));
 // Add services to the container.
+string appConf = @"C:\Users\sema.ozturk\Desktop\Sockettt\SocketCommunication_Async_withGetInfo_ServerBasewLog_ReadFromIniFileinUserServ_GetById_12\SocketCommunication\Variables.ini";
+
 
 builder.Services.AddControllers();
 builder.Logging.AddLog4Net();
@@ -18,10 +21,9 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddDbContext<UserDbContext>(x =>
 {
-    x.UseSqlServer(builder.Configuration.GetConnectionString("SqlConnection"), option =>
-    {
-        option.MigrationsAssembly(Assembly.GetAssembly(typeof(UserDbContext)).GetName().Name);
-    });
+    var cfg = new ConfigParser(appConf);
+    string conStr = cfg.GetValue("ReadDetails", "connectionString");
+    x.UseSqlServer(conStr);
 });
 var app = builder.Build();
 

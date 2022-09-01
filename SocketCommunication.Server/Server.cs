@@ -1,5 +1,6 @@
 ﻿using log4net;
 using Newtonsoft.Json;
+using Salaros.Configuration;
 using SocketCommunication.Client;
 using System;
 using System.Collections.Generic;
@@ -11,6 +12,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -32,12 +34,14 @@ namespace SocketCommunication.Server
         private static string jsonText;
         public static User userModel;
         private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-
+        string appConf = @"C:\Users\sema.ozturk\Desktop\Sockettt\SocketCommunication_Async_withGetInfo_ServerBasewLog_ReadFromIniFileinUserServ_GetById_12\SocketCommunication\Variables.ini";
         #region Server Form'undan Api'ye bağlanarak Client'tan gelen Tc değerine göre json dönen method
         #endregion
         public async Task<string> ConnectApi(User user)
         {
-
+            var cfg = new ConfigParser(appConf);
+            string baseUrl = cfg.GetValue("ReadDetails", "baseUrl");
+            string endpUrl = cfg.GetValue("ReadDetails", "getByIdEndpointUrl");
             try
             {
                 var client = new HttpClient();
@@ -45,20 +49,21 @@ namespace SocketCommunication.Server
                 if (user.UserId == null)
                 {
 
-                    client.BaseAddress = new Uri("https://localhost:44355/");
+                    client.BaseAddress = new Uri(baseUrl);
                     string api = "api/Users/GetByNameSurname?name=" + user.UserName + "&surname=" + user.UserSurname;
                     response = await client.GetAsync(api);
                 }
                 else if (user.UserSurname == null && user.UserInfo == null)
                 {
-                    client.BaseAddress = new Uri(VariableConfig.BaseUrl);
-                    string api = VariableConfig.endpointUrl + user.UserId;
+                    client.BaseAddress = new Uri(baseUrl);
+                    string api = endpUrl + user.UserId;
                     response = await client.GetAsync(api);
                 }
                 if (response.IsSuccessStatusCode)
                 {
                     log.Info(VariableConfig.connectedtoApi);
                     jsonText = await response.Content.ReadAsStringAsync();
+                    //jsonText = response.Content.ReadAsStringAsync().Result;
                     //var dataSource = response.Content.ReadAsStringAsync().Result;
                     //User result = JsonConvert.DeserializeObject<User>(jsonText);
                     return jsonText;
@@ -84,6 +89,7 @@ namespace SocketCommunication.Server
         }
         public ServerSide()
         {
+            
             log4net.Config.XmlConfigurator.Configure();
             InitializeComponent();
         }
@@ -208,6 +214,7 @@ namespace SocketCommunication.Server
                     //if (receivedMessage == 3) AppendToTextBox(text);
                 }
                 log.Info(_username + VariableConfig.okMessageArrived);
+                //Thread.Sleep(1000);
                 Array.Resize(ref buffer, socket.ReceiveBufferSize);
                 //btnClick_Click(null, null);
                 socket.BeginReceive(buffer, 0, buffer.Length, SocketFlags.None, new AsyncCallback(ReceiveCallback), socket);
