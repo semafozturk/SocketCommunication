@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using log4net;
+using Newtonsoft.Json;
 using SocketCommunication.Client;
 using System;
 using System.Collections.Generic;
@@ -7,6 +8,7 @@ using System.Data;
 using System.Drawing;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
@@ -17,128 +19,239 @@ namespace SocketCommunication.Server
     public partial class ServerSide : Form
     {
         //TcpListener? server = null;
+        private static List<SocketswName> sockets = new List<SocketswName>();
         private Socket serverSocket;
-        private Socket clientSocket; 
+        private Socket clientSocket;
+        private static int receivedMessage = 0;
         private byte[] buffer;
+        private byte[] buff2;
         IPAddress ip;
         int port;
-        string _username;
+        public static string _username;
         private static string tc;
         private static string jsonText;
-        public string SendTc()
+        public static User userModel;
+        private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
+        #region Server Form'undan Api'ye bağlanarak Client'tan gelen Tc değerine göre json dönen method
+        #endregion
+        public async Task<string> ConnectApi(User user)
         {
-            return tc;
+
+            try
+            {
+                var client = new HttpClient();
+                HttpResponseMessage response = new HttpResponseMessage();
+                if (user.UserId == null)
+                {
+
+                    client.BaseAddress = new Uri("https://localhost:44355/");
+                    string api = "api/Users/GetByNameSurname?name=" + user.UserName + "&surname=" + user.UserSurname;
+                    response = await client.GetAsync(api);
+                }
+                else if (user.UserSurname == null && user.UserInfo == null)
+                {
+                    client.BaseAddress = new Uri(VariableConfig.BaseUrl);
+                    string api = VariableConfig.endpointUrl + user.UserId;
+                    response = await client.GetAsync(api);
+                }
+                if (response.IsSuccessStatusCode)
+                {
+                    log.Info(VariableConfig.connectedtoApi);
+                    jsonText = await response.Content.ReadAsStringAsync();
+                    //var dataSource = response.Content.ReadAsStringAsync().Result;
+                    //User result = JsonConvert.DeserializeObject<User>(jsonText);
+                    return jsonText;
+                }
+                log.Error(VariableConfig.apiConnectError);
+                return VariableConfig.apiConnectError;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+                return VariableConfig.whileApiConnectError;
+            }
         }
-        public string SendJsonText()
+        #region Socketten gelen mesajı textboxa yazdırma methodu
+        #endregion
+        private void AppendToTextBox(string txt)
         {
-            return jsonText;
+            Invoke((Action)delegate
+            {
+                txtContent.Text += Environment.NewLine + txt;
+                txtMessage.Text = String.Empty;
+            });
         }
-        
-        
         public ServerSide()
         {
             log4net.Config.XmlConfigurator.Configure();
-            
             InitializeComponent();
         }
-        //protected Socket AcceptMethod(Socket listeningSocket)
-        //{
-        //    Socket mySocket;
-        //    using (mySocket = listeningSocket.Accept())
-        //        return mySocket;
-        //}
-
+        #region Client'tan gelen bağlantı isteğini kabul eden method
+        #endregion
         private void AcceptCallback(IAsyncResult AR)
         {
             try
             {
-                clientSocket = serverSocket.EndAccept(AR);
-                buffer = new byte[clientSocket.ReceiveBufferSize];
-                
-                var sendData = Encoding.ASCII.GetBytes(txtMessage.Text);
-                clientSocket.BeginSend(sendData, 0, sendData.Length, SocketFlags.None, SendCallback, null);
-                clientSocket.BeginReceive(buffer, 0, buffer.Length, SocketFlags.None, ReceiveCallback, null);
-                txtMessage.Text = String.Empty;
+                Socket socket = serverSocket.EndAccept(AR);
+                //SocketswName socketwName = new SocketswName();
+                //socketwName.clientSocket = socket;
+                //sockets.Add(clientSocket);
+                //clientSocket = serverSocket.EndAccept(AR);
+                //buffer = new byte[socket.ReceiveBufferSize];
+                Array.Resize(ref buffer, socket.ReceiveBufferSize);
+                //Array.Resize(ref buffer, socket.ReceiveBufferSize);
+                //var sendData = Encoding.ASCII.GetBytes(txtMessage.Text);
+                //socket.BeginSend(sendData, 0, sendData.Length, SocketFlags.None, new AsyncCallback(SendCallback), socket);
+
+                socket.BeginReceive(buffer, 0, buffer.Length, SocketFlags.None, new AsyncCallback(ReceiveCallback), socket);
+                //Thread.Sleep(3500);
+                //Array.Resize(ref buffer, received);
+                //string text = Encoding.ASCII.GetString(buffer);
+                //txtContent.Text = "123";
+                //socketwName.UserName = _username;
                 serverSocket.BeginAccept(AcceptCallback, null);
-                log.Info("AcceptCallback");
+
+                //sockets.Add(socketwName);
+                log.Info(VariableConfig.acceptClientConRequest);
             }
             catch (SocketException ex)
             {
-                txtMessage.Text += "AcceptCallBack SocketException Hatası";
+                txtMessage.Text += VariableConfig.socketexError;
+                log.Error(VariableConfig.socketexError);
             }
             catch (ObjectDisposedException ex)
             {
-                txtMessage.Text += "AcceptCallBack ObjectDisposedException Hatası";
+                txtMessage.Text += VariableConfig.objectDisposedExError;
+                log.Error(VariableConfig.objectDisposedExError);
             }
         }
-        private void ReceiveCallback(IAsyncResult AR)
+        #region Client'tan Server'a gelen mesaj isteğini kabul eden method
+        #endregion
+        private async void ReceiveCallback(IAsyncResult AR)
         {
             try
             {
-                int received = clientSocket.EndReceive(AR);
-                
-                //_username = clientForm.GetUserName();
-                Array.Resize(ref buffer,received);
-                string text=Encoding.ASCII.GetString(buffer);
-                string[] jsonSplitted = text.Split('>');
-                int usernameLen = jsonSplitted[0].Length;
-                _username = text.Substring(0, usernameLen);
-                jsonText = text.Remove(0, usernameLen+1);
-                User result = JsonConvert.DeserializeObject<User>(jsonText);
-                tc = result.UserId;
-                AppendToTextBox(text);
-                btnClick_Click(null, null);
-                //btnClick.Click += new EventHandler(btnClick_Click);
+                Socket socket = (Socket)AR.AsyncState;
+                receivedMessage++;
+                int received = socket.EndReceive(AR);
+                byte[] buffer2 = new byte[received];
+                //Array.Resize(ref buffer2,received);//new received
+                Array.Copy(buffer, buffer2, received);
+                string text = Encoding.ASCII.GetString(buffer2);
+                //Array.Copy(buffer, buffer2, received);
+                //string text=Encoding.ASCII.GetString(buffer);
+                //User userModel;
+                log.Debug(VariableConfig.bufferArrivedDebug + text);
+                //normal mesaj
+                if (text.Contains(VariableConfig.greaterThanSign))
+                {
+                    string[] splitted = text.Split(VariableConfig.greaterThanSign);
+                    int usernameLen = splitted[0].Length;
+                    //_username = splitted[0];
+                    AppendToTextBox(text);
+                    log.Info($"{VariableConfig.messageArrivedtoServer1}\"{text}\"{VariableConfig.messageArrivedtoServer2}");
+                }
+                //socketle gelen değer json ise
+                if (text.Contains('{'))
+                {
+                    //json gönderirken
+                    //getinfoya jsonı doldurup geri döndürme
+                    if (!text.Contains('>'))
+                    {
+                        userModel = JsonConvert.DeserializeObject<User>(text);
+                        if (userModel.UserSurname == null && userModel.UserInfo == null)
+                        {
+                            _username = userModel.UserName;
+                            string jsonFromApi = await ConnectApi(userModel);
+                            //User userModel2 = JsonConvert.DeserializeObject<User>(jsonFromApi);
+                            AppendToTextBox(_username + ">" + jsonFromApi);
+                            //Array.Resize(ref buffer, jsonFromApi.Length);
+                            byte[] data = Encoding.ASCII.GetBytes(jsonFromApi);
+                            socket.BeginSend(data, 0, data.Length, SocketFlags.None, new AsyncCallback(SendCallback), socket);
 
-                ////Array.Resize(ref buffer,clientSocket.ReceiveBufferSize);
 
-                clientSocket.BeginReceive(buffer, 0, buffer.Length, SocketFlags.None, ReceiveCallback, null);
+                            //buffer = Encoding.ASCII.GetBytes(jsonFromApi);
+                            //socket.BeginSend(buffer, 0, buffer.Length, SocketFlags.None, new AsyncCallback(SendCallback), socket);
+                        }
+                        else if (userModel.UserId == null) //ad soyada göre arama
+                        {
+                            _username = userModel.UserInfo;
+                            string jsonFromApi = await ConnectApi(userModel);
+                            AppendToTextBox(_username + ">" + jsonFromApi);
+                            //Array.Resize(ref buffer, jsonFromApi.Length);
+                            byte[] data = Encoding.ASCII.GetBytes(jsonFromApi);
+                            socket.BeginSend(data, 0, data.Length, SocketFlags.None, new AsyncCallback(SendCallback), socket);
+
+                            //buffer = Encoding.ASCII.GetBytes(jsonFromApi);
+                            //socket.BeginSend(buffer, 0, buffer.Length, SocketFlags.None, new AsyncCallback(SendCallback), socket);
+
+                        }
+                        else AppendToTextBox(_username + ">" + text);
+                    }
+                    //jsonı mesaj olarak gönderirken
+                    else
+                    {
+                        AppendToTextBox(_username + ">" + text);
+                    }
+                }
+                if (!text.Contains('>') && !text.Contains(VariableConfig.bracketSign))
+                {
+                    _username = text;
+                    SocketswName socketwName = new SocketswName();
+                    socketwName.clientSocket = socket;
+                    socketwName.UserName = _username;
+                    sockets.Add(socketwName);
+                    string cleanedUserName = text.Replace("\0", " ");
+                    if (!lstUsers.Items.Contains(cleanedUserName.Trim())) lstUsers.Items.Add(_username);
+                    else AppendToTextBox(text);
+                    //if (receivedMessage == 3) AppendToTextBox(text);
+                }
+                log.Info(_username + VariableConfig.okMessageArrived);
+                Array.Resize(ref buffer, socket.ReceiveBufferSize);
+                //btnClick_Click(null, null);
+                socket.BeginReceive(buffer, 0, buffer.Length, SocketFlags.None, new AsyncCallback(ReceiveCallback), socket);
             }
             catch (SocketException ex)
             {
-                txtMessage.Text += "SOCKETEX HATASI";
+                txtMessage.Text += VariableConfig.socketexError;
+                log.Error(VariableConfig.socketexError);
             }
             catch (ObjectDisposedException ex)
             {
-                txtMessage.Text += "ObjectDisposedException HATASI";
+                txtMessage.Text += VariableConfig.objectDisposedExError;
+                log.Error(VariableConfig.objectDisposedExError);
             }
         }
 
-        private void AppendToTextBox(string txt)
-        {
-            //ClientSide clientForm=new ClientSide();
-            //Form c = clientForm.GetClientForm();
-            //TextBox teext = (TextBox)clientForm.Controls.Find("txtUsername", true).FirstOrDefault();
-            Invoke((Action)delegate
-              {
-                  txtContent.Text += Environment.NewLine+txt;
-                  txtMessage.Text = String.Empty;
-              });
-        }
+        #region Server'dan Client'a mesaj gönderme methodu
+        #endregion
         private void SendCallback(IAsyncResult AR)
         {
             try
             {
-                clientSocket.EndSend(AR);
-                log.Info("SendCllback");
+                Socket socket = (Socket)AR.AsyncState;
+                socket.EndSend(AR);
+
             }
             catch (SocketException ex)
             {
-                txtMessage.Text += "SendCallback SocketException Hatası";
+                txtMessage.Text += VariableConfig.socketexError;
+                log.Error(VariableConfig.socketexError);
             }
             catch (ObjectDisposedException ex)
             {
-                txtMessage.Text += "SendCallback ObjectDisposedException Hatası";
+                txtMessage.Text += VariableConfig.objectDisposedExError;
+                log.Error(VariableConfig.objectDisposedExError);
             }
         }
 
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            log.Info("SERVER LOAD");
             Control.CheckForIllegalCrossThreadCalls = false;
             btnStop.Enabled = false;
-            
+
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -153,15 +266,17 @@ namespace SocketCommunication.Server
                 serverSocket.Bind(new IPEndPoint(IPAddress.Any, port));
                 serverSocket.Listen(10);
                 serverSocket.BeginAccept(AcceptCallback, null);
-                log.Info("Server bağlantısı başlatıldı.");
+                log.Info(VariableConfig.connectStarted);
             }
             catch (SocketException ex)
             {
-                txtMessage.Text += "Click SocketException Hatası";
+                txtMessage.Text += VariableConfig.socketexError;
+                log.Error(VariableConfig.socketexError);
             }
             catch (ObjectDisposedException ex)
             {
-                txtMessage.Text += "Click ObjectDisposedException Hatası";
+                txtMessage.Text += VariableConfig.objectDisposedExError;
+                log.Error(VariableConfig.objectDisposedExError);
             }
         }
 
@@ -169,19 +284,35 @@ namespace SocketCommunication.Server
         {
             try
             {
-                //PersonPackage person = new PersonPackage(checkBoxMale.Checked, (ushort)numberBoxAge.Value, textBoxEmployee.Text);
-                byte[] buffer = Encoding.ASCII.GetBytes(txtMessage.Text);
-                clientSocket.BeginSend(buffer, 0, buffer.Length, SocketFlags.None, SendCallback, null);
-                log.Info("Mesaj Gönderimi tamam.");
+                byte[] buffer = Encoding.ASCII.GetBytes(VariableConfig.serverString + txtMessage.Text);
+                //List<string> names = new List<string>();
+                Socket selectedSocket = null;
+                for (int i = 0; i < sockets.Count; i++)
+                {
+                    //names.Add(sockets[i].UserName.ToString());
+                    if (lstUsers.SelectedItem.ToString() == sockets[i].UserName?.Trim())
+                    {
+                        selectedSocket = sockets[i].clientSocket;
+                    }
+                }
+                selectedSocket.BeginSend(buffer, 0, buffer.Length, SocketFlags.None, new AsyncCallback(SendCallback), selectedSocket);
+
+                //for (int i = 0; i < sockets.Count; i++)
+                //{
+                //    sockets[i].BeginSend(buffer, 0, buffer.Length, SocketFlags.None, new AsyncCallback(SendCallback), sockets[i]);
+                //}
+                log.Info(VariableConfig.okMessageSend);
                 txtMessage.Text = String.Empty;
             }
             catch (SocketException ex)
             {
-                txtMessage.Text += "btnSend_Click SocketException Hatası";
+                txtMessage.Text += VariableConfig.socketexError;
+                log.Error(VariableConfig.socketexError);
             }
             catch (ObjectDisposedException ex)
             {
-                txtMessage.Text += "btnSend_Click ObjectDisposedException Hatası";
+                txtMessage.Text += VariableConfig.objectDisposedExError;
+                log.Error(VariableConfig.objectDisposedExError);
             }
         }
 
@@ -189,12 +320,16 @@ namespace SocketCommunication.Server
         {
             //serverSocket.Shutdown(SocketShutdown.Both);
             //serverSocket.Close();
+            //for (int i = 0; i < sockets.Count; i++)
+            //{
+            //    sockets[i].Close();
+            //}
         }
 
         private void btnClick_Click(object sender, EventArgs e)
         {
-            GetInfo gi = new GetInfo(this);
-            gi.ShowDialog();
+            //GetInfo gi = new GetInfo(this);
+            //gi.ShowDialog();
         }
     }
 }

@@ -14,7 +14,7 @@ using Newtonsoft.Json;
 
 namespace SocketCommunication.Client
 {
-    
+
     public partial class GetInfo : Form
     {
         public static Socket cliSocket;
@@ -60,8 +60,8 @@ namespace SocketCommunication.Client
         #endregion
         public DataTable FillGridWithJson
         {
-            get{ return dt; }
-            set { dataGridView1.DataSource=value; }
+            get { return dt; }
+            set { dataGridView1.DataSource = value; }
         }
         #region TC değerinin jsona dönüştürülmek üzere Server'a gönderilmesi için çağrılan method
         #endregion
@@ -80,7 +80,7 @@ namespace SocketCommunication.Client
                 log.Error(VariableConfig.disposeError);
             }
         }
-        
+
         private async void btnGetir_Click(object sender, EventArgs e)
         {
             //Server'a gönder
@@ -88,14 +88,14 @@ namespace SocketCommunication.Client
             tc = txtTC.Text;
             this.clientForm.getTC = tc;
             this.clientForm.btnSend_Click(null, null);
-            
+
             //clicked = 0;
             this.Close();
         }
 
         private void btnGonder_Click(object sender, EventArgs e)
         {
-            nameSurname = txtName.Text+" "+txtSurname.Text;
+            nameSurname = txtName.Text + " " + txtSurname.Text;
             this.clientForm.getNameSurname = nameSurname;
             this.clientForm.btnSend_Click(null, null);
             //this.clientForm.FillMessagewithJson = jsonText;
@@ -110,11 +110,11 @@ namespace SocketCommunication.Client
 
         private void button1_Click(object sender, EventArgs e)
         {
-           
-                //User result = JsonConvert.DeserializeObject<User>(jsonText);
-                //dt = FillGrid(result);
-                //dataGridView1.DataSource = dt;
-            
+
+            //User result = JsonConvert.DeserializeObject<User>(jsonText);
+            //dt = FillGrid(result);
+            //dataGridView1.DataSource = dt;
+
         }
     }
 }
