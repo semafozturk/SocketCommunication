@@ -37,6 +37,8 @@ namespace SocketCommunication.Server
         
         public ServerSide()
         {
+            log4net.Config.XmlConfigurator.Configure();
+            
             InitializeComponent();
         }
         //protected Socket AcceptMethod(Socket listeningSocket)
@@ -52,12 +54,13 @@ namespace SocketCommunication.Server
             {
                 clientSocket = serverSocket.EndAccept(AR);
                 buffer = new byte[clientSocket.ReceiveBufferSize];
-
+                
                 var sendData = Encoding.ASCII.GetBytes(txtMessage.Text);
                 clientSocket.BeginSend(sendData, 0, sendData.Length, SocketFlags.None, SendCallback, null);
                 clientSocket.BeginReceive(buffer, 0, buffer.Length, SocketFlags.None, ReceiveCallback, null);
                 txtMessage.Text = String.Empty;
                 serverSocket.BeginAccept(AcceptCallback, null);
+                log.Info("AcceptCallback");
             }
             catch (SocketException ex)
             {
@@ -79,6 +82,7 @@ namespace SocketCommunication.Server
                 string text=Encoding.ASCII.GetString(buffer);
                 string[] jsonSplitted = text.Split('>');
                 int usernameLen = jsonSplitted[0].Length;
+                _username = text.Substring(0, usernameLen);
                 jsonText = text.Remove(0, usernameLen+1);
                 User result = JsonConvert.DeserializeObject<User>(jsonText);
                 tc = result.UserId;
@@ -116,6 +120,7 @@ namespace SocketCommunication.Server
             try
             {
                 clientSocket.EndSend(AR);
+                log.Info("SendCllback");
             }
             catch (SocketException ex)
             {
@@ -130,7 +135,7 @@ namespace SocketCommunication.Server
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            
+            log.Info("SERVER LOAD");
             Control.CheckForIllegalCrossThreadCalls = false;
             btnStop.Enabled = false;
             
@@ -148,6 +153,7 @@ namespace SocketCommunication.Server
                 serverSocket.Bind(new IPEndPoint(IPAddress.Any, port));
                 serverSocket.Listen(10);
                 serverSocket.BeginAccept(AcceptCallback, null);
+                log.Info("Server bağlantısı başlatıldı.");
             }
             catch (SocketException ex)
             {
@@ -166,6 +172,7 @@ namespace SocketCommunication.Server
                 //PersonPackage person = new PersonPackage(checkBoxMale.Checked, (ushort)numberBoxAge.Value, textBoxEmployee.Text);
                 byte[] buffer = Encoding.ASCII.GetBytes(txtMessage.Text);
                 clientSocket.BeginSend(buffer, 0, buffer.Length, SocketFlags.None, SendCallback, null);
+                log.Info("Mesaj Gönderimi tamam.");
                 txtMessage.Text = String.Empty;
             }
             catch (SocketException ex)

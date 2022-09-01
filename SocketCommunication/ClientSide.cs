@@ -88,6 +88,7 @@ namespace SocketCommunication
                 clientSocket.EndConnect(AR);
                 buffer = new byte[clientSocket.ReceiveBufferSize];
                 clientSocket.BeginReceive(buffer, 0, buffer.Length, SocketFlags.None, ReceiveCallback, null);
+                log.Info("CLIENT - ConnectCallback");
             }
             catch (SocketException ex)
             {
@@ -106,6 +107,7 @@ namespace SocketCommunication
             {
                 username = txtUsername.Text;
                var asd= clientSocket.EndSend(AR);
+                log.Info(username+VariableConfig.sendCallbackInfo);
             }
             catch (SocketException ex)
             {

@@ -3,12 +3,15 @@ using SocketCommunication.Api;
 using SocketCommunication.Api.Infrastructure;
 using SocketCommunication.Api.Infrastructure.Implementations;
 using System.Reflection;
+using Microsoft.Extensions.Logging.Log4Net.AspNetCore;
+using log4net.Config;
 
 var builder = WebApplication.CreateBuilder(args);
-
+XmlConfigurator.Configure(new FileInfo("log4net.config"));
 // Add services to the container.
 
 builder.Services.AddControllers();
+builder.Logging.AddLog4Net();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

@@ -5,6 +5,8 @@ namespace SocketCommunication.Api.Infrastructure.Implementations
     public class UserService : IUserService
     {
         private readonly UserDbContext _context;
+        //private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        ILog log = LogManager.GetLogger(typeof(Program));
 
         public UserService(UserDbContext context)
         {
@@ -18,8 +20,17 @@ namespace SocketCommunication.Api.Infrastructure.Implementations
 
         public User GetById(string tc)
         {
-            User user = _context.Users.Where(x => x.UserId == tc).FirstOrDefault();
-            return user;
+            try
+            {
+                    User user = _context.Users.Where(x => x.UserId == tc).FirstOrDefault();
+                    if (user == null) log.Warn($"{tc} Tc'li kullanıcı kayıtlı değil.");
+                    return user;
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex.Message);
+            }
+            return null;
         }
 
         public void InsertUser(User user)
