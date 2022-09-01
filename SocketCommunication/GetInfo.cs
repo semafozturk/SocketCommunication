@@ -9,6 +9,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using log4net;
 using Newtonsoft.Json;
 
 namespace SocketCommunication.Client
@@ -16,22 +17,30 @@ namespace SocketCommunication.Client
     
     public partial class GetInfo : Form
     {
-        //public static Socket cliSocket;
+        public static Socket cliSocket;
+        public static string tc;
+        public static string nameSurname;
         public static string jsonText;
+        public DataTable dt;
         private ClientSide clientForm = null;
+        private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        public GetInfo()
+        {
+            InitializeComponent();
+        }
         public GetInfo(Form callingForm)
         {
             clientForm = callingForm as ClientSide;
             InitializeComponent();
         }
-        public string GetJsonText()
+        #region Client'tan json textini çekip eşitlemek için kullanılan method
+        #endregion
+        public void GetJsonData(string json)
         {
-            return jsonText;
+            jsonText = json;
         }
-        public string SendJsonData()
-        {
-            return jsonText;
-        }
+        #region DataGridView'i doldurmak için DataSource'un belirlendiği method
+        #endregion
         public DataTable FillGrid(User user)
         {
             DataTable dt = new DataTable();
@@ -47,44 +56,65 @@ namespace SocketCommunication.Client
             dt.Rows.Add(dr);
             return dt;
         }
-        public GetInfo()
+        #region Client Form'undan erişim sağlayarak dataGridView'i doldurmaya yarayan property
+        #endregion
+        public DataTable FillGridWithJson
         {
-            InitializeComponent();
+            get{ return dt; }
+            set { dataGridView1.DataSource=value; }
         }
-        
-
-        private async void btnGetir_Click(object sender, EventArgs e)
+        #region TC değerinin jsona dönüştürülmek üzere Server'a gönderilmesi için çağrılan method
+        #endregion
+        private void SendCallback(IAsyncResult AR)
         {
-            ////ClientSide clientForm = new ClientSide();
-            ////cliSocket = clientForm.sendSocket();
-            var client = new HttpClient();
-            client.BaseAddress = new Uri(VariableConfig.BaseUrl);
-            HttpResponseMessage response = new HttpResponseMessage();
             try
             {
-                string api = VariableConfig.endpointUrl + txtTC.Text;
-                response = await client.GetAsync(api);
-                if (response.IsSuccessStatusCode)
-                {
-                    jsonText = await response.Content.ReadAsStringAsync();
-                    var dataSource = response.Content.ReadAsStringAsync().Result;
-
-                    User result = JsonConvert.DeserializeObject<User>(jsonText);
-                    var dt = FillGrid(result);
-                    dataGridView1.DataSource = dt;
-                }
+                cliSocket.EndSend(AR);
             }
-            catch (Exception ex)
+            catch (SocketException ex)
             {
-                MessageBox.Show(ex.Message);
+                log.Error(VariableConfig.socketExError);
             }
-
+            catch (ObjectDisposedException ex)
+            {
+                log.Error(VariableConfig.disposeError);
+            }
+        }
+        
+        private async void btnGetir_Click(object sender, EventArgs e)
+        {
+            //Server'a gönder
+            //int clicked = 1;
+            tc = txtTC.Text;
+            this.clientForm.getTC = tc;
+            this.clientForm.btnSend_Click(null, null);
+            
+            //clicked = 0;
+            this.Close();
         }
 
         private void btnGonder_Click(object sender, EventArgs e)
         {
-            this.clientForm.FillMessagewithJson = jsonText;
+            nameSurname = txtName.Text+" "+txtSurname.Text;
+            this.clientForm.getNameSurname = nameSurname;
+            this.clientForm.btnSend_Click(null, null);
+            //this.clientForm.FillMessagewithJson = jsonText;
             this.Close();
+        }
+
+        private void GetInfo_Load(object sender, EventArgs e)
+        {
+            txtTC.Text = tc;
+            //if (jsonText != null) button1_Click(null,null);
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+           
+                //User result = JsonConvert.DeserializeObject<User>(jsonText);
+                //dt = FillGrid(result);
+                //dataGridView1.DataSource = dt;
+            
         }
     }
 }

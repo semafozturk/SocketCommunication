@@ -24,6 +24,11 @@ namespace SocketCommunication.Api.Controllers
         {
             return Ok(_userService.GetById(tc));
         }
+        [HttpGet("[action]")]
+        public IActionResult GetByNameSurname(string name,string surname)
+        {
+            return Ok(_userService.GetByNameSurname(name,surname));
+        }
         [HttpPost]
         public IActionResult InsertUser(User user)
         {

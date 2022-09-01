@@ -88,10 +88,10 @@ namespace SocketCommunication.Server
 
         private void GetInfo_Load(object sender, EventArgs e)
         {
-            string json = serverForm.SendJsonText();
-            User result = JsonConvert.DeserializeObject<User>(json);
-            var dt = FillGrid(result);
-            dataGridView1.DataSource = dt;
+            //string json = serverForm.SendJsonText();
+            //User result = JsonConvert.DeserializeObject<User>(json);
+            //var dt = FillGrid(result);
+            //dataGridView1.DataSource = dt;
         }
     }
 }
